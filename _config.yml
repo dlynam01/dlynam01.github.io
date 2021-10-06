@@ -1,0 +1,43 @@
+title: DLynam Blog
+description: My personal Tech blog
+author: David Lynam
+avatar: https://cldup.com/z0I57YTl2V.jpg
+email: davidlynam1@hotmail.co.uk
+subscribe: false
+
+plugins:
+  - jekyll-seo-tag
+  - jekyll-feed
+  - jekyll-sitemap
+  - jekyll-paginate
+
+paginate: 10
+
+# Uncomment the below line and set the tracking ID for enabling Google Analytics
+# 
+# google_analytics: 
+
+# Uncomment the below lines and set the Disqus shortname for enabling Disqus
+# 
+# disqus:
+
+# Jekyll
+# ======
+exclude:
+  - scripts/
+  - README.md
+  - jekyll-theme-hamilton.gemspec
+
+# Jekyll SEO Tag (Optional)
+# =========================
+twitter:
+  username: t00cool
+  card: summary
+logo: logo.png
+social:
+  name: David Lynam
+  links:
+    - https://twitter.com/t00cool
+    - https://github.com/dlynam01
+google_site_verification: u4WXQl0Eu66rsQo2kRdCNx
+lang: en

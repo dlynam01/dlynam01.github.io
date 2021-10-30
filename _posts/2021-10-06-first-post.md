@@ -1,6 +1,7 @@
 ---
 layout: post
 title:  "Welcome to my blog"
+tags: ["aws","costs"]
 ---
 
 # What I plan on blogging about

@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- Begin Jekyll SEO tag v2.7.1 -->
+<title>Internal APIs with Fargate | DLynam Blog</title>
+<meta name="generator" content="Jekyll v3.9.0" />
+<meta property="og:title" content="Internal APIs with Fargate" />
+<meta name="author" content="David Lynam" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="A walk through on building an internal API using Fargate" />
+<meta property="og:description" content="A walk through on building an internal API using Fargate" />
+<meta property="og:site_name" content="DLynam Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2021-11-19T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Internal APIs with Fargate" />
+<meta name="twitter:site" content="@t00cool" />
+<meta name="twitter:creator" content="@David Lynam" />
+<meta name="google-site-verification" content="u4WXQl0Eu66rsQo2kRdCNx" />
+<script type="application/ld+json">
+{"description":"A walk through on building an internal API using Fargate","author":{"@type":"Person","name":"David Lynam"},"mainEntityOfPage":{"@type":"WebPage","@id":"/2021/11/19/private-microservice-with-fargate.html"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"/logo.png"},"name":"David Lynam"},"@type":"BlogPosting","url":"/2021/11/19/private-microservice-with-fargate.html","headline":"Internal APIs with Fargate","dateModified":"2021-11-19T00:00:00+00:00","datePublished":"2021-11-19T00:00:00+00:00","@context":"https://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+
+
+<link type="application/atom+xml" rel="alternate" href="/feed.xml" title="DLynam Blog" />
+
+
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-D2FNF66RL7"></script>
+<script>
+  window['ga-disable-G-D2FNF66RL7'] = window.doNotTrack === "1" || navigator.doNotTrack === "1" || navigator.doNotTrack === "yes" || navigator.msDoNotTrack === "1";
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-D2FNF66RL7');
+</script>
+
+
+
+
+
+<!-- Google Fonts -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open%20Sans|Roboto|Roboto%20Slab|Inconsolata|Dancing%20Script|Noto%20Sans%20SC|Noto%20Sans%20TC|Noto%20Serif%20SC|Noto%20Serif%20TC|Ma%20Shan%20Zheng">
+
+<link rel="stylesheet" href="/assets/css/main.css">
+<link rel="stylesheet" href="/assets/css/skin.css">
+
+<!-- Begin selecting skin -->
+
+  <script>
+    const hour = (new Date()).getHours();
+    let filename = "";
+    if (hour >= 5 && hour < 7) {
+      filename = "/assets/css/skin-sunrise.css";
+    } else if (hour >= 7 && hour < 17) {
+      filename = "/assets/css/skin-daylight.css";
+    } else if (hour >= 17 && hour < 19) {
+      filename = "/assets/css/skin-sunset.css";
+    } else {
+      filename = "/assets/css/skin-midnight.css";
+    }
+    const elem = document.createElement("link");
+    elem.setAttribute("rel", "stylesheet");
+    elem.setAttribute("type", "text/css");
+    elem.setAttribute("href", filename);
+    document.getElementsByTagName("head")[0].appendChild(elem);
+  </script>
+
+<!-- End selecting skin -->
+
+<script async src="https://use.fontawesome.com/releases/v5.0.12/js/all.js"></script>
+
+
+
+
+  </head>
+
+  <body>
+    <div class="site-container">
+      <header class="site-header">
+        <div class="wrapper">
+  <script>
+    function clickSidebarButton() {
+      const elem = document.getElementById("site-sidebar")
+      if (elem.style.display == "none" || elem.style.display == "") {
+        elem.style.display = "block";
+      } else {
+        elem.style.display = "none";
+      }
+    }
+  </script>
+  <a class="site-sidebar-button" onclick="clickSidebarButton()"><i class="far fa-user"></i>
+  </a>
+
+  <a class="site-title" rel="author" href="/">DLynam Blog</a>
+
+  
+</div>
+
+      </header>
+      
+      <div class="site-body wrapper">
+        <aside class="site-sidebar" id="site-sidebar">
+          
+            <div class="sidebar-section"><img src="https://cldup.com/z0I57YTl2V.jpg" class="author-avatar u-photo align-center" alt="David Lynam">
+  </div>
+
+
+
+<div class="sidebar-section">
+  <ul class="contact-list">
+    <li>
+        <i class="sidebar-icon fas fa-at"></i>
+        <span class="contact-info p-name">David Lynam</span>
+      </li>
+    <li>
+        <i class="sidebar-icon fas fa-envelope"></i>
+        <a class="contact-info u-email" href="mailto:davidlynam1@hotmail.co.uk">davidlynam1@hotmail.co.uk</a>
+      </li>
+    
+  </ul>
+</div>
+
+
+
+<div class="sidebar-section">
+    <ul class="social-icons">
+      <li>
+          <a class="social-icon" href="https://twitter.com/t00cool"><i class="fab fa-twitter fa-2x" title="Twitter"></i></a>
+        </li><li>
+          <a class="social-icon" href="https://github.com/dlynam01"><i class="fab fa-github fa-2x" title="GitHub"></i></a>
+        </li>
+    </ul>
+  </div>
+
+          
+        </aside>
+        <main class="site-main" id="site-main" aria-label="Content" tabindex="1">
+          <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+
+    <h1 class="post-title p-name" itemprop="name headline">Internal APIs with Fargate</h1>
+    <p class="post-meta"><time class="dt-published" datetime="2021-11-19T00:00:00+00:00" itemprop="datePublished">
+        Nov 19, 2021
+      </time></p>
+
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <h1 id="a-walk-through-on-building-an-internal-api-using-fargate">A walk through on building an internal API using Fargate</h1>
+
+<p>Recently, we needed to design and implement an API that supplied data to a Graphql resolver in our customer api … the catch, the API was not in the same account.</p>
+
+<p>There are many ways to solve this problem and this is just our take on it.</p>
+
+<p>We were not keen on exposing the internal API publicly for a few reasons which mostly boil down to cost.</p>
+
+<p>Firstly, having a public API means that anybody can hit the endpoint without getting any further due to authentication, and because anybody can hit it, it also means anybody can abuse it or DDOS it. We could have throws an AWS WAF at the problem but WAF will incur a cost and scaling out the solution across many accounts with many API’s seemed like an expensive approach to the problem.</p>
+
+<p>Secondly, we wanted to avoid doubling NATing costs between the customer api and the internal data api. As we know when data leaves AWS is where hidden costs live.
+We know we are going to be transporting the data out of AWS over the customer api but we didn’t want to get double hit with the cost of the data being egressed out fo the internal api also.</p>
+
+<p>Firstly, I’ll present the diagram</p>
+
+<p><img src="/img/arch/api/internal-api.png" alt="Internal API Arch Diagram" /></p>
+
+<p>The idea is quite simple. Using CDK and in particular the <a href="https://docs.aws.amazon.com/cdk/api/latest/docs/@aws-cdk_aws-ecs-patterns.NetworkLoadBalancedFargateService.html">NetworkLoadBalancedFargateService</a> construct from the ecs-patterns module does almost everything you need.</p>
+
+<p>First create a subdomain (api.acme.com) zone.</p>
+
+<figure class="highlight"><pre><code class="language-typescript" data-lang="typescript"><span class="kd">const</span> <span class="nx">hostedZone</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">route53</span><span class="p">.</span><span class="nx">PublicHostedZone</span><span class="p">(</span><span class="k">this</span><span class="p">,</span> <span class="dl">'</span><span class="s1">ConfigHostedZone</span><span class="dl">'</span><span class="p">,</span> <span class="p">{</span>
+    <span class="na">zoneName</span><span class="p">:</span> <span class="dl">'</span><span class="s1">api.acme.com</span><span class="dl">'</span>
+<span class="p">});</span></code></pre></figure>
+
+<p>Next create the NetworkLoadBalancer that will front the Fargate Service.</p>
+
+<figure class="highlight"><pre><code class="language-typescript" data-lang="typescript"><span class="kd">let</span> <span class="nx">nlb</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">NetworkLoadBalancer</span><span class="p">(</span><span class="k">this</span><span class="p">,</span> <span class="dl">"</span><span class="s2">NetworkFargateServiceLB</span><span class="dl">"</span><span class="p">,</span> <span class="p">{</span>
+            <span class="nx">vpc</span><span class="p">,</span>
+            <span class="na">internetFacing</span><span class="p">:</span> <span class="kc">false</span><span class="p">,</span>
+            <span class="na">deletionProtection</span><span class="p">:</span> <span class="kc">false</span><span class="p">,</span>
+            <span class="na">crossZoneEnabled</span><span class="p">:</span> <span class="kc">true</span><span class="p">,</span>
+            <span class="na">loadBalancerName</span><span class="p">:</span> <span class="dl">"</span><span class="s2">API-NLB</span><span class="dl">"</span><span class="p">,</span>
+            <span class="na">vpcSubnets</span><span class="p">:</span> <span class="p">{</span>
+                <span class="na">subnetFilters</span><span class="p">:</span> <span class="nx">props</span><span class="p">.</span><span class="nx">subnetFilters</span>
+            <span class="p">}</span>
+        <span class="p">});</span></code></pre></figure>
+
+<p>Supply the subnet filters allowing only selected private subnets to be used.
+I’ll discuss the reason to supply our own NetworkLoadBalancer below.</p>
+
+<p>Next create the Fargate service, specifying the image options and the NetworkLoadbalancer you created in the previous step.</p>
+
+<figure class="highlight"><pre><code class="language-typescript" data-lang="typescript">        <span class="kd">let</span> <span class="nx">nlbService</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">ecs_patterns</span><span class="p">.</span><span class="nx">NetworkLoadBalancedFargateService</span><span class="p">(</span><span class="k">this</span><span class="p">,</span> <span class="dl">"</span><span class="s2">NetworkFargateService</span><span class="dl">"</span><span class="p">,</span> <span class="p">{</span>
+            <span class="na">cluster</span><span class="p">:</span> <span class="nx">cluster</span><span class="p">,</span> <span class="c1">// Required</span>
+            <span class="na">cpu</span><span class="p">:</span> <span class="mi">512</span><span class="p">,</span> <span class="c1">// Default is 256</span>
+            <span class="na">desiredCount</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="c1">// Default is 1</span>
+            <span class="na">taskImageOptions</span><span class="p">:</span> <span class="p">{</span>
+                <span class="na">image</span><span class="p">:</span> <span class="nx">ecs</span><span class="p">.</span><span class="nx">ContainerImage</span><span class="p">.</span><span class="nx">fromEcrRepository</span><span class="p">(</span><span class="nx">repository</span><span class="p">,</span> <span class="nx">props</span><span class="p">.</span><span class="nx">imageTag</span><span class="p">),</span>
+                <span class="na">taskRole</span><span class="p">:</span> <span class="nx">role</span>
+            <span class="p">},</span>
+            <span class="na">memoryLimitMiB</span><span class="p">:</span> <span class="mi">1024</span><span class="p">,</span> <span class="c1">// Default is 512</span>
+            <span class="na">publicLoadBalancer</span><span class="p">:</span> <span class="kc">false</span><span class="p">,</span> <span class="c1">// Default is false</span>
+            <span class="na">loadBalancer</span><span class="p">:</span> <span class="nx">nlb</span><span class="p">,</span>
+            <span class="na">taskSubnets</span><span class="p">:</span> <span class="p">{</span>
+                <span class="na">subnetFilters</span><span class="p">:</span> <span class="nx">props</span><span class="p">.</span><span class="nx">subnetFilters</span>
+            <span class="p">},</span>
+            <span class="na">domainName</span><span class="p">:</span> <span class="nx">props</span><span class="p">.</span><span class="nx">hostedZoneName</span><span class="p">,</span>
+            <span class="na">domainZone</span><span class="p">:</span> <span class="nx">hostedZone</span><span class="p">,</span>
+            <span class="na">recordType</span><span class="p">:</span> <span class="nx">NetworkLoadBalancedServiceRecordType</span><span class="p">.</span><span class="nx">ALIAS</span>
+        <span class="p">});</span></code></pre></figure>
+
+<p>Passing the domainName and domainZone to the construct allows the construct to create the Alias record pointing to the NetworkLoadBalancer you supplied.</p>
+
+<p>NetworkLoadbalancer exists only in a private subnet and is not exposed publicly it only has a private IP address which is what the DNS Alias will resolve to.</p>
+
+<p>Finally you need to add an NS record to your domain name (acme.com) to delegate to your subdomain (api.acme.com).</p>
+
+<p>When the customer api now makes a request to api.acme.com, the DNS lookup first reaches acme.com which then delegates to api.acme.com and then resolves to the private IP address of the NetworkLoadBalancer.</p>
+
+<p>Great, but thats a private IP address. So how to get the private IP address to reach the Fargate Service.</p>
+
+<p>This is where we make use of our Transit Gateway Attachments.</p>
+
+<p>Our accounts include a VPC which is attached to a shared Transit Gateway.</p>
+
+<p>After the customer api resolves the api.acme.com domain it will make a request to the private IP Address.
+This request is directed by the route table on the VPC to the transit gateway which then routes the request to the correct attachment on the VPC in the account supplying the internal api.</p>
+
+<p>This then routes to the NetworkLoadBalancer which in turn load balances on the targates supplied by the Fargate Service.</p>
+
+<h2 id="voilla-"><span style="color:#00008b;">Voilla!!! :)</span></h2>
+
+<h3 id="all-seems-simple-but-there-are-a-few-gochas"><span style="color:#780a27; text-align: center">All seems simple but there are a few gochas.</span></h3>
+
+<ul>
+  <li>
+    <p>For Fargate to reach ECR to pull down its docker image you need to include a VPC endpoint and this needs to be included in your route table. Assuming you are using Fargate 1.4.0 you will require two entries to your route table. You can read more <a href="https://docs.aws.amazon.com/AmazonECR/latest/userguide/vpc-endpoints.html">here</a></p>
+  </li>
+  <li>
+    <p>The CDK pattern out of the box it doesn’t work using the NetworkLoadBalancer. You will notice your Fargate Tasks restarting and this is because there is a missing entry from the security group on the Fargate service. Don’t worry there is an open issue <a href="https://github.com/aws/aws-cdk/issues/1490">here</a>. So if I have some time I may look into resolving. It can of course be fixed by adding the entry in your CDK.</p>
+  </li>
+</ul>
+
+<figure class="highlight"><pre><code class="language-typescript" data-lang="typescript"><span class="nx">nlbService</span><span class="p">.</span><span class="nx">service</span><span class="p">.</span><span class="nx">connections</span><span class="p">.</span><span class="nx">allowFromAnyIpv4</span><span class="p">(</span><span class="nx">Port</span><span class="p">.</span><span class="nx">tcp</span><span class="p">(</span><span class="mi">80</span><span class="p">),</span> <span class="dl">"</span><span class="s2">Allowing HTTP connections through</span><span class="dl">"</span><span class="p">);</span></code></pre></figure>
+
+<ul>
+  <li>
+    <p>For the eagle eyed observer might have noticed that the loadBalancer can be created by the ecs-pattern construct. Well it’s not ideal in how it places the NetworkLoadBalancer. A NetworkLoadBalancer can only be deployed into <em>one subnet per AZ</em>. The construct will attempt to deploy to all subnets it finds. So providing the parameter publicLoadBalancer as false instructs the construct to deploy to all private subnets in the VPC. Maybe that seems reasonable, but your deployment will fall over if you have more than one private subnet in a given AZ. This is the reason we’ve supplied our own NetworkLoadBalancer to control the subnets it deploys to.</p>
+  </li>
+  <li>
+    <p>Again with CDK, The last quirk I suppose we noticed was with the use of TLS. If you want to make the connection between your customer api and the internal API secure you need listen on port 443 on the NetworkLoadBalancer with a TLS cert from ACM. However the CDK ecs-pattern doesn’t allow passing of the TLS certificates. As a result you are forced to add a second listener to the NetworkLoadBalancer. It’s not the end of the world, but you now have port 80 opened on you loadbalancer without really needing it open.</p>
+  </li>
+</ul>
+
+<figure class="highlight"><pre><code class="language-typescript" data-lang="typescript"><span class="kd">let</span> <span class="nx">tlsCert</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">acm</span><span class="p">.</span><span class="nx">Certificate</span><span class="p">(</span><span class="k">this</span><span class="p">,</span> <span class="dl">"</span><span class="s2">APIDomainCert</span><span class="dl">"</span><span class="p">,</span> <span class="p">{</span>
+    <span class="na">domainName</span><span class="p">:</span> <span class="nx">props</span><span class="p">.</span><span class="nx">hostedZoneName</span><span class="p">,</span>
+    <span class="na">validation</span><span class="p">:</span> <span class="nx">acm</span><span class="p">.</span><span class="nx">CertificateValidation</span><span class="p">.</span><span class="nx">fromDns</span><span class="p">(</span><span class="nx">hostedZone</span><span class="p">)</span>
+<span class="p">});</span>
+
+<span class="kd">let</span> <span class="nx">listener</span> <span class="o">=</span> <span class="nx">nlb</span><span class="p">.</span><span class="nx">addListener</span><span class="p">(</span><span class="dl">"</span><span class="s2">HTTPS-Listener-NLB</span><span class="dl">"</span><span class="p">,</span> <span class="p">{</span>
+    <span class="na">port</span><span class="p">:</span> <span class="mi">443</span><span class="p">,</span>
+    <span class="na">protocol</span><span class="p">:</span> <span class="nx">Protocol</span><span class="p">.</span><span class="nx">TLS</span><span class="p">,</span>
+    <span class="na">certificates</span><span class="p">:</span> <span class="p">[{</span><span class="na">certificateArn</span><span class="p">:</span> <span class="nx">tlsCert</span><span class="p">.</span><span class="nx">certificateArn</span><span class="p">}],</span>
+
+<span class="p">});</span>
+
+<span class="nx">listener</span><span class="p">.</span><span class="nx">addTargets</span><span class="p">(</span><span class="dl">"</span><span class="s2">Fargate-Service-Target</span><span class="dl">"</span><span class="p">,</span> <span class="p">{</span>
+    <span class="na">port</span><span class="p">:</span> <span class="mi">80</span><span class="p">,</span>
+    <span class="na">protocol</span><span class="p">:</span> <span class="nx">Protocol</span><span class="p">.</span><span class="nx">TCP</span><span class="p">,</span>
+    <span class="na">targets</span><span class="p">:</span> <span class="p">[</span><span class="nx">nlbService</span><span class="p">.</span><span class="nx">service</span><span class="p">]</span>
+<span class="p">});</span></code></pre></figure>
+
+
+  </div>
+
+  <footer class="post-footer">
+    
+
+    
+      <div class="post-meta">
+        <i class="fas fa-tags"></i>
+        <ul class="post-taxonomies post-tags">
+          
+          
+            <li class="post-tag">
+              
+              <a href="/tags/#aws">aws</a>
+            </li>
+          
+            <li class="post-tag">
+              
+              <a href="/tags/#elb">elb</a>
+            </li>
+          
+            <li class="post-tag">
+              
+              <a href="/tags/#infra">infra</a>
+            </li>
+          
+            <li class="post-tag">
+              
+              <a href="/tags/#networking">networking</a>
+            </li>
+          
+            <li class="post-tag">
+              
+              <a href="/tags/#nlb">nlb</a>
+            </li>
+          
+        </ul>
+      </div>
+    
+
+    <nav class="post-pagination" role="navigation">
+      
+        <a class="post-previous" href="/2021/10/30/aws-savings-plan-horrors.html">
+          <h4 class="post-pagination-label">Prev</h4>
+          <span class="post-pagination-title">
+            <i class="fas fa-arrow-left"></i> Halloween horror with AWS Savings Plans
+
+          </span>
+        </a>
+      
+
+      
+    </nav>
+  </footer>
+
+  
+    <div id="disqus_thread"></div>
+<script>
+  var disqus_config = function () {
+    this.page.url = '/2021/11/19/private-microservice-with-fargate.html';
+    this.page.identifier = '/2021/11/19/private-microservice-with-fargate.html';
+  };
+
+  (function() {
+    var d = document, s = d.createElement('script');
+
+    s.src = 'https://http-dlynam-com.disqus.com/embed.js';
+
+    s.setAttribute('data-timestamp', +new Date());
+    (d.head || d.body).appendChild(s);
+  })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript>
+
+  
+  
+</article>
+
+          <footer class="site-footer">
+            <div class="footer-col-wrapper">
+
+  <div class="footer-col">
+    <div class="copyright">
+      
+      
+      
+      
+      <p>Copyright © 2021 David Lynam; All rights reserved.</p>
+      
+    </div>
+    <p>
+      Powered by <a href="https://jekyllrb.com/">Jekyll</a> & <a href="https://github.com/ngzhio/jekyll-theme-hamilton">Hamilton</a>
+    </p>
+  </div>
+
+  <div class="footer-col">
+    <p>My personal Tech blog</p>
+  </div>
+</div>
+
+          </footer>
+        </main>
+      </div>
+    </div>
+  </body>
+
+</html>

@@ -6,7 +6,7 @@ header: "/img/SavingsPlansPricing.png"
 comments: true
 ---
 
-# A walk through on building an internal API using Fargate 
+# A walk through on building an internal API using Fargate
 
 Recently, we needed to design and implement an API that supplied data to a Graphql resolver in our customer api ... the catch, the API was not in the same account.
 
@@ -14,10 +14,10 @@ There are many ways to solve this problem and this is just our take on it.
 
 We were not keen on exposing the internal API publicly for a few reasons which mostly boil down to cost.
 
-Firstly, having a public API means that anybody can hit the endpoint without getting any further due to authentication, and because anybody can hit it, it also means anybody can abuse it or DDOS it. We could have throws an AWS WAF at the problem but WAF will incur a cost and scaling out the solution across many accounts with many API's seemed like an expensive approach to the problem.
+Firstly, having a public API means that anybody can hit the endpoint without getting any further due to authentication, and because anybody can hit it, it also means anybody can abuse it or DDOS it. We could have thrown AWS WAF at the problem but WAF will incur a cost and scaling out the solution across many accounts with many API's seemed like an expensive approach to the problem.
 
 Secondly, we wanted to avoid doubling NATing costs between the customer api and the internal data api. As we know when data leaves AWS is where hidden costs live.
-We know we are going to be transporting the data out of AWS over the customer api but we didn't want to get double hit with the cost of the data being egressed out fo the internal api also.
+We know we are going to be transporting the data out of AWS over the customer api but we didn't want to get double hit with the cost of the data being egressed out for the internal api also.
 
 Firstly, I'll present the diagram
 
@@ -83,7 +83,7 @@ Next create the Fargate service, specifying the image options and the NetworkLoa
 
 Passing the domainName and domainZone to the construct allows the construct to create the Alias record pointing to the NetworkLoadBalancer you supplied.
 
-NetworkLoadbalancer exists only in a private subnet and is not exposed publicly it only has a private IP address which is what the DNS Alias will resolve to.
+NetworkLoadbalancer exists only in a private subnet and is not exposed publicly; it only has a private IP address which is what the DNS Alias will resolve to.
 
 Finally you need to add an NS record to your domain name (acme.com) to delegate to your subdomain (api.acme.com).
 
@@ -91,7 +91,7 @@ When the customer api now makes a request to api.acme.com, the DNS lookup first 
 
 
 
-Great, but thats a private IP address. So how to get the private IP address to reach the Fargate Service.
+Great, but that's a private IP address. So how to get the private IP address to reach the Fargate Service.
 
 This is where we make use of our Transit Gateway Attachments.
 
@@ -110,7 +110,7 @@ This then routes to the NetworkLoadBalancer which in turn load balances on the t
 
 * For Fargate to reach ECR to pull down its docker image you need to include a VPC endpoint and this needs to be included in your route table. Assuming you are using Fargate 1.4.0 you will require two entries to your route table. You can read more [here](https://docs.aws.amazon.com/AmazonECR/latest/userguide/vpc-endpoints.html)
 
-* The CDK pattern out of the box it doesn't work using the NetworkLoadBalancer. You will notice your Fargate Tasks restarting and this is because there is a missing entry from the security group on the Fargate service. Don't worry there is an open issue [here](https://github.com/aws/aws-cdk/issues/1490). So if I have some time I may look into resolving. It can of course be fixed by adding the entry in your CDK.
+* The CDK pattern out of the box doesn't work using the NetworkLoadBalancer. You will notice your Fargate Tasks restarting and this is because there is a missing entry from the security group on the Fargate service. Don't worry there is an open issue [here](https://github.com/aws/aws-cdk/issues/1490). So if I have some time I may look into resolving. It can of course be fixed by adding the entry in your CDK.
 
 {% highlight typescript %}
 {% raw %}
@@ -120,7 +120,7 @@ nlbService.service.connections.allowFromAnyIpv4(Port.tcp(80), "Allowing HTTP con
 
 * For the eagle eyed observer might have noticed that the loadBalancer can be created by the ecs-pattern construct. Well it's not ideal in how it places the NetworkLoadBalancer. A NetworkLoadBalancer can only be deployed into *one subnet per AZ*. The construct will attempt to deploy to all subnets it finds. So providing the parameter publicLoadBalancer as false instructs the construct to deploy to all private subnets in the VPC. Maybe that seems reasonable, but your deployment will fall over if you have more than one private subnet in a given AZ. This is the reason we've supplied our own NetworkLoadBalancer to control the subnets it deploys to.
 
-* Again with CDK, The last quirk I suppose we noticed was with the use of TLS. If you want to make the connection between your customer api and the internal API secure you need listen on port 443 on the NetworkLoadBalancer with a TLS cert from ACM. However the CDK ecs-pattern doesn't allow passing of the TLS certificates. As a result you are forced to add a second listener to the NetworkLoadBalancer. It's not the end of the world, but you now have port 80 opened on you loadbalancer without really needing it open.
+* Again with CDK, The last quirk we noticed was with the use of TLS. If you want to make the connection between your customer api and the internal API secure you need listen on port 443 on the NetworkLoadBalancer with a TLS cert from ACM. However the CDK ecs-pattern doesn't allow passing of the TLS certificates. As a result you are forced to add a second listener to the NetworkLoadBalancer. It's not the end of the world, but you now have port 80 opened on you loadbalancer without really needing it open.
 
 {% highlight typescript %}
 {% raw %}
